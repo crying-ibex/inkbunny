@@ -110,6 +110,9 @@ class Inkbunny():
             PlatformDirs('inkbunnyapi', '').user_data_dir)
 
         self.s = requests.Session()
+        self.s.hooks['response'].append(self._update_time)
+        self.s.hooks['response'].append(self._handle_error)
+
         self.last_use_time = None
 
         self.sid = sid
@@ -117,15 +120,16 @@ class Inkbunny():
         self.username = username if username else 'guest'
         self.password = password
 
+        self.login()
+
 
     def __enter__(self):
-        self._set_session_params()
         return self
 
 
     def __exit__(self, exception_type, exception_value, exception_traceback):
         # self._save_session_id()
-        pass
+        self.logout()
 
 
     def _update_time(self, r, *args, **kwargs):
@@ -153,13 +157,6 @@ class Inkbunny():
             json.dump(data, sid_file)
 
 
-    def _set_session_params(self):
-        self._get_session_id()
-        self.s.params.update({'sid': self.sid})
-        self.s.hooks['response'].append(self._update_time)
-        self.s.hooks['response'].append(self._handle_error)
-
-
     def _get_session_id(self, session_length_days: int = 2) -> str:
         if self.sid:
             # sid manually specified
@@ -184,16 +181,16 @@ class Inkbunny():
         # if can't use cache, log in again
         # check if guest first
         if self.username.lower() == 'guest':
-            self._api_login('')
+            self.api_login('')
 
         elif self.password:
-            self._api_login(self.password)
+            self.api_login(self.password)
 
             self.password = None
             del self.password
 
         else:
-            self._api_login(getpass.getpass(
+            self.api_login(getpass.getpass(
                 'Session ID not found or expired and password not supplied.'
                 f'\nEnter password for {self.username}: '))
 
@@ -203,7 +200,7 @@ class Inkbunny():
         return self.sid
 
 
-    def _api_login(self, password: str) -> dict:
+    def api_login(self, password: str) -> dict:
         r = self.s.post('https://inkbunny.net/api_login.php', params={
                 'username': self.username,
                 'password': password})
@@ -215,12 +212,24 @@ class Inkbunny():
         return response
 
 
-    def _api_logout(self) -> dict:
+    def api_logout(self) -> dict:
         r = self.s.post('https://inkbunny.net/api_logout.php',
             params={'sid': self.sid})
 
-        # retire sid? (i.e. delete saved sid file if any)
         return r.json()
+
+
+    def login(self):
+        self._get_session_id()
+        self.s.params.update({'sid': self.sid})
+
+
+    def logout(self):
+        sid_path = self.session_id_cache_directory / f'sid_{self.username}.json'
+        if sid_path.is_file():
+            os.remove(sid_path)
+
+        self.api_logout()
 
 
     def api_search(self, *,
@@ -323,7 +332,7 @@ class Inkbunny():
         return r.json()
 
 
-    def _paginated_search(self, count: int, *,
+    def paginated_search(self, count: int, *,
         submission_ids_only: bool = False,
         keywords_list: bool = False,
         #
@@ -443,7 +452,7 @@ class Inkbunny():
         query = ','.join(set(md5))
 
         if len(md5) > 100:
-            return self._paginated_search(len(md5), text=query, md5=True)
+            return self.paginated_search(len(md5), text=query, md5=True)
 
         return self.api_search(text=query, md5=True)
 
@@ -679,3 +688,7 @@ class Inkbunny():
         return self.edit_submission_details(uploaded_submission,
             **{k: v for (k, v) in list(arguments.items())[7:]})
 
+
+    def search(self, query: str, results_count: int = 30, **kwargs):
+        # todo
+        return self.paginated_search(results_count, text=query, **kwargs)
