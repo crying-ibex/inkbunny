@@ -2,13 +2,14 @@
 # https://wiki.inkbunny.net/wiki/API
 
 import json
-import requests
 from pathlib import Path
 import os
 import datetime
 import getpass
+from random import choices
+
+import requests
 from platformdirs import PlatformDirs # honestly get rid of this dependency
-import random
 
 
 SUBMISSION_TYPES = {
@@ -217,7 +218,7 @@ class Inkbunny():
     def _api_logout(self) -> dict:
         r = self.s.post('https://inkbunny.net/api_logout.php',
             params={'sid': self.sid})
-        
+
         # retire sid? (i.e. delete saved sid file if any)
         return r.json()
 
@@ -285,9 +286,9 @@ class Inkbunny():
                 'username', 'fav_datetime', 'fav_stars', 'pool_order'}
 
             if orderby not in orderby_set:
-                orderby_set_string = '    '.join(f"'{o}'\n" for o in orderby_set)
+                orderby_set_str = '    '.join(f"'{o}'\n" for o in orderby_set)
                 raise ValueError('orderby must be one of:\n'
-                    f'    {orderby_set_string}')
+                    f'    {orderby_set_str}')
 
             if scraps not in ('both', 'no', 'only'):
                 raise ValueError('scraps must be \'both\', \'no\', or \'only\'')
@@ -307,7 +308,7 @@ class Inkbunny():
                     if isinstance(type_, str|int):
                         type_ = {type_}
 
-                    if all(str(t) for t in SUBMISSION_TYPES.keys()):
+                    if all(str(t) for t in SUBMISSION_TYPES):
                         params['type'] = ','.join(set(type_))
                     else:
                         raise ValueError(
@@ -346,7 +347,7 @@ class Inkbunny():
         random: bool = False,
         scraps: str = 'both',
         ) -> list[dict]:
-        
+
         arguments = locals()
         kwargs = {k: v for (k, v) in list(arguments.items())[2:]}
         if count <= 100:
@@ -364,8 +365,7 @@ class Inkbunny():
         if total <= 100:
             return submissions
 
-        if count > total:
-            count = total
+        count = min(count, total)
 
         kwargs = {'rid': rid,
             'submission_ids_only': submission_ids_only,
@@ -415,10 +415,9 @@ class Inkbunny():
         if len(submission_ids) > 100:
             raise ValueError('Too many submission ids provided '
                 f'({len(submission_ids)}). Maximum is 100.')
-            print('error handling goes here')
 
         params = {'submission_ids': ','.join(set(submission_ids))}
-        
+
         if sort_keywords_by not in ('alphabetical', 'submissions_count'):
             raise ValueError('sort_keywords_by must be \'alphabetical\' '
                 'or \'submissions_count\'')
@@ -488,12 +487,12 @@ class Inkbunny():
 
         arguments = locals()
 
-        ratings = {
+        rating_tags = {
             'nudity': 'tag[2]', 'mild_violence': 'tag[3]',
             'sexual_themes': 'tag[4]', 'strong_violence': 'tag[5]'}
 
         if str(type_) not in SUBMISSION_TYPES:
-            
+
             if type_ in SIMPLE_SUBMISSION_TYPE_NUMBER:
                 type_ = SIMPLE_SUBMISSION_TYPE_NUMBER[type_]
 
@@ -505,7 +504,7 @@ class Inkbunny():
             raise ValueError('If specified, twitter_image_pref must be 0, '
                 '1, or 2')
 
-        if visibility not in (None, 'yes' 'no' 'yes_nowatch', True, False):
+        if visibility not in (None, 'yes', 'no', 'yes_nowatch', True, False):
             raise ValueError('If specified, visibility must either be bool, '
                 'or str with value \'yes\', \'no\', or \'yes_nowatch\'')
 
@@ -514,8 +513,8 @@ class Inkbunny():
         for (k, v) in list(arguments.items())[2:]:
             # allow for falsey things like empty strings
             if v is not None and v is not False:
-                if k in ratings and v is True:
-                    params[ratings[k]] = 'yes'
+                if k in rating_tags and v is True:
+                    params[rating_tags[k]] = 'yes'
                 elif v is True:
                     params[k] = 'yes'
                 else:
@@ -525,7 +524,7 @@ class Inkbunny():
         r = self.s.post('https://inkbunny.net/api_editsubmission.php',
             params=params)
 
-        return r.json()        
+        return r.json()
 
 
     def watchlist(self, *,
@@ -555,7 +554,7 @@ class Inkbunny():
         files = ([Path(f) for f in files]
             if not isinstance(files, str|Path)
             else [Path(files)])
-        
+
         if len(files) > 104: # where does this number come from?
             raise ValueError('Submissions may have at most 104 files, '
                 f'{len(files)} given')
@@ -578,7 +577,7 @@ class Inkbunny():
 
 
     def _close_files(self, payload: dict):
-        for k, v in payload.items():
+        for v in payload.values():
             if isinstance(v, tuple):
                 v[1].close()
             else:
@@ -607,8 +606,11 @@ class Inkbunny():
             payload |= self._form_files(zipfile, 'zipfile')
 
         params = {}
+        if submission_id:
+            params['submission_id'] = submission_id
+
         if replace:
-            params['replace': replace]
+            params['replace'] = replace
 
         if notify:
             params['notify'] = 'yes'
@@ -625,7 +627,7 @@ class Inkbunny():
 
 
     def _create_progress_key(self):
-        return ''.join(random.choices(
+        return ''.join(choices(
             'abcdefghijklmnopqrstuvwxyz0123456789', k=32))
 
 
@@ -668,7 +670,7 @@ class Inkbunny():
         guest_block: bool = False,
         friends_only: bool = False
         ) -> dict:
-        
+
         arguments = locals()
         uploaded_submission = self.upload(
             **{k: v for (k, v) in list(arguments.items())[1:7]}
@@ -676,4 +678,4 @@ class Inkbunny():
 
         return self.edit_submission_details(uploaded_submission,
             **{k: v for (k, v) in list(arguments.items())[7:]})
-        
+
