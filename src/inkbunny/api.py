@@ -128,7 +128,6 @@ class Inkbunny():
 
 
     def __exit__(self, exception_type, exception_value, exception_traceback):
-        # self._save_session_id()
         self.logout()
 
 
