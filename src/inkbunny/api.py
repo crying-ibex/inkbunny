@@ -636,7 +636,8 @@ class Inkbunny():
 
     def _create_progress_key(self):
         return ''.join(choices(
-            'abcdefghijklmnopqrstuvwxyz0123456789', k=32))
+            '0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz',
+            k=32))
 
 
     def api_upload_progress(self, progress_key: str, cancel: bool = False):
@@ -646,8 +647,6 @@ class Inkbunny():
         if cancel:
             params['cancel'] = 'yes'
 
-        print('here-api_upload_progress')
-        print(params)
         r = self.s.post('https://inkbunny.net/api_progress.php',
             params=params)
 
