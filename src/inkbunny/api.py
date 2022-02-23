@@ -265,8 +265,8 @@ class Inkbunny():
         params = {}
         if text is not None and not any((keywords, title, description, md5)):
             # is ValueError the correct exception?
-            raise UserWarning('At least one of \'keywords\', \'title\', '
-                '\'description\', or \'md5\' must be True '
+            raise UserWarning("At least one of 'keywords', 'title', "
+                "'description', or 'md5' must be True "
                 'if text search is to work')
 
         if rid is not None:
@@ -281,12 +281,12 @@ class Inkbunny():
         else:
             # mode 1 search
             if field_join_type not in ('or', 'and'):
-                raise ValueError('field_join_type must be \'or\' or \'and\'')
+                raise ValueError("field_join_type musrt be 'or' or 'and'")
 
             # 'exact' usage a little ambiguous in api documentation
             if string_join_type not in ('or', 'and', 'exact'):
                 raise ValueError(
-                    'string_join_type must be \'or\', \'and\', or \'exact\'')
+                    "string_join_type must be 'or', 'and', or 'exact")
 
             orderby_set = {'create_datetime', 'last_file_update_datetime',
                 'unread_datetime', 'unread_datetime_reverse', 'views',
@@ -299,7 +299,7 @@ class Inkbunny():
                     f'    {orderby_set_str}')
 
             if scraps not in ('both', 'no', 'only'):
-                raise ValueError('scraps must be \'both\', \'no\', or \'only\'')
+                raise ValueError("scraps must be 'both', 'no', or 'only")
 
             if not 1 <= count_limit <= 50000:
                 raise ValueError('count_limit must be between 1 and 50000')
@@ -427,8 +427,8 @@ class Inkbunny():
         params = {'submission_ids': ','.join(set(submission_ids))}
 
         if sort_keywords_by not in ('alphabetical', 'submissions_count'):
-            raise ValueError('sort_keywords_by must be \'alphabetical\' '
-                'or \'submissions_count\'')
+            raise ValueError("sort_keywords_by must be 'alphabetical' "
+                "or 'submissions_count'")
 
         if sort_keywords_by == 'submissions_count':
             params['sort_keywords_by'] = 'submissions_count'
@@ -514,7 +514,7 @@ class Inkbunny():
 
         if visibility not in (None, 'yes', 'no', 'yes_nowatch', True, False):
             raise ValueError('If specified, visibility must either be bool, '
-                'or str with value \'yes\', \'no\', or \'yes_nowatch\'')
+                "or str with value 'yes', 'no', or 'yes_nowatch'")
 
         params = {'submission_id': submission_id}
 
@@ -540,8 +540,8 @@ class Inkbunny():
         limit: int = None) -> list[dict]:
 
         if orderby not in ('alphabetical', 'create_datetime'):
-            raise ValueError ('orderby must be either \'alphabetical\' '
-                'or \'create_datetime\'')
+            raise ValueError ("orderby must be either 'alphabetical' "
+                "or 'create_datetime'")
 
         params = {}
 
@@ -641,8 +641,12 @@ class Inkbunny():
 
 
     def api_upload_progress(self, progress_key: str, cancel: bool = False):
-        # this won't actually work in this wrapper, because the python requests
-        # module is not asynchronous
+        # this doesn't work, not only b/c python requests isn't asynchronous,
+        # but also b/c it's broken on inkbunny itself
+        raise DeprecationWarning(
+            'The progress functionality is currently broken on Inkbunny.\n'
+            'This may be removed in future versions of this API wrapper.')
+
         params = {'progress_key': progress_key}
         if cancel:
             params['cancel'] = 'yes'
